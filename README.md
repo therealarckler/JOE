@@ -10,7 +10,7 @@ VL53L0X library.
 JOE allows you to send MIDI messages with ToF sensors
 to/from a serial device (like an Arduino.) 
 
-You will need the framework Hinduino 
+You will need the framework Hiduino 
 https://github.com/ddiakopoulos/hiduino
 
 The project home page is https://github.com/therealarckler/JOE
