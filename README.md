@@ -23,6 +23,8 @@ USING vl53l0x
 
 vl53l0x-arduino is an Arduino library. It is used with JOE.
 
+https://github.com/pololu/vl53l0x-arduino
+
 To install vl53l0x, place the "vl53l0x" directory inside a
 "libraries" directory within your Arduino "sketchbook" directory. Then
 restart the Arduino IDE. Example sketches can be found in the example/ folder.
