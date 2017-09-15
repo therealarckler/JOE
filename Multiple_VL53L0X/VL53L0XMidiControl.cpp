@@ -111,12 +111,20 @@ void VL53L0XMidiControl::refreshValue(int minDistance, int maxDistance, int smoo
 {
     long value = getDistance();
 
+	/*
+    if (!midi)
+    {
+        Serial.print("Valeur brute " + axisName + " : ");
+        Serial.print(value);
+    }
+	*/
+	
     /*
-        if(abs(value - lastValue) > rejectThreshold && abs(value - lastValidValue) > rejectThreshold)
-        {
-        lastValue = value;
-        return;
-        }
+    if(abs(value - lastValue) > rejectThreshold && abs(value - lastValidValue) > rejectThreshold)
+    {
+    lastValue = value;
+    return;
+    }
     */
 
     if (value == -1 || value > maxDistance + 200)
@@ -126,27 +134,28 @@ void VL53L0XMidiControl::refreshValue(int minDistance, int maxDistance, int smoo
             value = autoReturnValue;
         }
     }
-    else if(value = 0)
+    else if (value == 0)
     {
-    	if(!lastZeroSkipped)
-    	{
-    		lastZeroSkipped = true;
-    		value = lastValidValue;
-    	}
+        if (!lastZeroSkipped)
+        {
+            lastZeroSkipped = true;
+            value = lastValidValue;
+        }
     }
     else
     {
-    	lastZeroSkipped = false;
+        lastZeroSkipped = false;
     }
 
     value = smooth(value, smoothSampleAmount);
 
+	/*
     if (!midi)
     {
-        //Serial.print("Valeur " + axisName + " : ");
-        //Serial.println(value);
+        Serial.print("\tValeur filtree : ");
+        Serial.println(value);
     }
-
+	*/
     int controlValue = 0;
 
     if (assignmentMode)
@@ -175,23 +184,23 @@ void VL53L0XMidiControl::refreshValue(int minDistance, int maxDistance, int smoo
         lastValidValue = value;
         lastControlValue = controlValue;
     }
-    /*
-        if(!midi)
-        {
+
+    if (!midi)
+    {
         Serial.print("Control " + axisName + " : ");
 
-        if(skip[currentControlChannelSet] || assignmentMode && assignmentSkip)
+        if (skip[currentControlChannelSet] || assignmentMode && assignmentSkip)
         {
-        Serial.println("SKIPPED");
+            Serial.println("SKIPPED");
         }
         else
         {
-        Serial.print(controlValue);
-        Serial.print("\tCanal ");
-        Serial.println(midiChannel);
+            Serial.print(controlValue);
+            Serial.print("\tCanal ");
+            Serial.println(midiChannel);
         }
-        }
-    */
+    }
+
     if (midi && (!assignmentMode && !skip[currentControlChannelSet] || (assignmentMode && !assignmentSkip)))
     {
         sendMIDI(controlChange, controlChannel, controlValue);
@@ -207,14 +216,14 @@ void VL53L0XMidiControl::refreshValue(int minDistance, int maxDistance, int smoo
 
 void VL53L0XMidiControl::setEnable(int channelSet, bool enableState)
 {
-	if(currentControlChannelSet == channelSet)
-	{
-		setEnable(enableState);
-	}
-	else
-	{
-		skip[channelSet] = !enableState;
-	}
+    if (currentControlChannelSet == channelSet)
+    {
+        setEnable(enableState);
+    }
+    else
+    {
+        skip[channelSet] = !enableState;
+    }
 }
 
 void VL53L0XMidiControl::setEnable(bool enableState)

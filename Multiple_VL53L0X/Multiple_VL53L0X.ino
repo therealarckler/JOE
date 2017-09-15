@@ -374,6 +374,11 @@ void loop()
 
         controls[count].refreshValue(minDistance, maxDistance, smoothSampleAmount);
         checkSwitches();
-
+    }
+    
+    if(!midi)
+    {
+      Serial.println();
+      delay(100);
     }
 }
