@@ -242,7 +242,7 @@ void setup()
 
 bool isAround(int value1, int value2)
 {
-    if (abs(value1 - value2) < 5)
+    if (abs(value1 - value2) < 15)
     {
         return true;
     }
@@ -346,10 +346,13 @@ void checkSwitches()
         {
             int eepromAddress = eepromOffset + count * 16 + currentControlChannelSet;
             
-            Serial.print("EEPROM WRITE ");
-            Serial.print(eepromAddress);
-            Serial.print(" ");
-            Serial.println(controls[count].isEnabled());
+            if(!midi)
+            {
+            	Serial.print("EEPROM WRITE ");
+            	Serial.print(eepromAddress);
+            	Serial.print(" ");
+            	Serial.println(controls[count].isEnabled());
+            }
 
             EEPROM.write(eepromAddress, controls[count].isEnabled());
         }
