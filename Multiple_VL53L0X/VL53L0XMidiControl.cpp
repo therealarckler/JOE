@@ -480,7 +480,7 @@ long VL53L0XMidiControl::smooth(long rawValue, int smoothSampleAmount)
 
 bool VL53L0XMidiControl::isAround(int value1, int value2)
 {
-    if (abs(value1 - value2) < 5)
+    if (abs(value1 - value2) < 15)
     {
         return true;
     }
