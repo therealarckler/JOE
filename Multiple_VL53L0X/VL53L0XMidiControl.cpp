@@ -55,7 +55,8 @@ void VL53L0XMidiControl::initSkipArray()
 
 int VL53L0XMidiControl::getDistance()
 {
-    return sensor.readRangeSingleMillimeters();
+    //return sensor.readRangeSingleMillimeters();
+    return sensor.readRangeContinuousMillimeters();
 }
 
 void VL53L0XMidiControl::sendMIDI(int command, int note, int velocity)
@@ -98,10 +99,9 @@ void VL53L0XMidiControl::init(int I2CAddress = 0)
         delay(100);
 
         sensor.init();
-
         sensor.setTimeout(500);
-
-        sensor.setMeasurementTimingBudget(20000);
+        sensor.setMeasurementTimingBudget(60000);
+        sensor.startContinuous();
 
         if (I2CAddress != 0)
         {
@@ -160,7 +160,7 @@ void VL53L0XMidiControl::refreshValue(int minDistance, int maxDistance, int smoo
         Serial.println(value);
     }
 	*/
-    int controlValue = 0;
+    controlValue = 0;
 
     if (assignmentMode)
     {
@@ -206,6 +206,7 @@ void VL53L0XMidiControl::refreshValue(int minDistance, int maxDistance, int smoo
     }
 
     if (midiEnabled && (!assignmentMode && !skip[currentControlChannelSet] || (assignmentMode && !assignmentSkip)))
+    //if (true && (!assignmentMode && !skip[currentControlChannelSet] || (assignmentMode && !assignmentSkip)))
     {
         //sendMIDI(controlChange, controlChannel, controlValue);
         shouldSendMidiBool = true;

@@ -17,7 +17,7 @@ const int maxDistanceMax = 800;
 const int minSmoothSampleAmount = 1;
 const int maxSmoothSampleAmount = 20;
 
-const bool midiEnabled = false;
+const bool midiEnabled = true;
 
 const int controlAmount = 4;
 const int controlSetAmount = 3;
@@ -384,12 +384,11 @@ void loop()
     for (int count = 0; count < controlAmount; count++)
     {
         //Serial.println(controls[count].getDistance());
-
         controls[count].refreshValue(minDistance, maxDistance, smoothSampleAmount);
 
         if(controls[count].shouldSendMidi())
 		{
-			MIDI.sendControlChange(controls[count].getControlChannel(), controls[count].getControlValue(), midiChannel);
+			MIDI.sendControlChange(controls[count].getControlChannel(), controls[count].getControlValue(), midiChannel + 1); // La fonction attend un canal entre 1 et 16
 		}
 
         checkSwitches();
