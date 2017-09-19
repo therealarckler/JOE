@@ -3,7 +3,7 @@
 
 #include <Arduino.h>
 #include <VL53L0X.h>
-#include <PCF8574.h>
+//#include <PCF8574.h>
 
 class VL53L0XMidiControl {
 
@@ -11,7 +11,7 @@ class VL53L0XMidiControl {
         VL53L0XMidiControl();
         VL53L0XMidiControl(String newAxisName, int newControlChannel, int newSwitchPin, int newSensorXShutPin, int newLedPin, bool newMidi, int newControlChannelAmount, int newControlChannelSetAmount);
         VL53L0XMidiControl(String newAxisName, int newControlChannel, int newSwitchPin, int newSwitchValues[4], int newSensorXShutPin, int newLedPin, bool newMidi, int newControlChannelAmount, int newControlChannelSetAmount);
-        VL53L0XMidiControl(String newAxisName, int newControlChannel, int newSwitchPin, int newSensorXShutPin, int newLedPin, bool newMidi, int newControlChannelAmount, int newControlChannelSetAmount, PCF8574& newPcf);
+        //VL53L0XMidiControl(String newAxisName, int newControlChannel, int newSwitchPin, int newSensorXShutPin, int newLedPin, bool newMidi, int newControlChannelAmount, int newControlChannelSetAmount, PCF8574& newPcf);
 
 
         void init(int I2CAddress = 0);
@@ -28,9 +28,12 @@ class VL53L0XMidiControl {
 
         bool getSwitchState();
         bool isEnabled();
+        bool shouldSendMidi();
 
         int getSwitchAction();
         int getDistance();
+        int getControlValue();
+        int getControlChannel();
 
     private:
         static const int noteON = 144; //144 = 10010000 en binaire, commande "note on"
@@ -38,7 +41,7 @@ class VL53L0XMidiControl {
         static const int controlChange = 176; //176 = 10110000 en binaire, commande "controlChange"
 
         VL53L0X sensor;
-        PCF8574* pcf;
+        //PCF8574* pcf;
 
         String axisName = "noName";
 
@@ -65,20 +68,24 @@ class VL53L0XMidiControl {
 
         int rejectThreshold = 20;
 
+        int controlValue = 0;
+
         float filterValue = 0.5;
         float smoothedValue = 0;
 
         bool lastSwitchState = true;
-        bool midi = false;
+        bool midiEnabled = false;
         bool autoReturn = false;
         bool currentLedState = true;
-
-        bool* skip = false;
 
         bool assignmentMode = false;
         bool assignmentSkip = true;
 
         bool lastZeroSkipped = false;
+
+        bool shouldSendMidiBool = false;
+
+        bool* skip = false;
 
         long lastSwitchActionMillis = 0;
         long lastSwitchSinglePressMillis = 0;

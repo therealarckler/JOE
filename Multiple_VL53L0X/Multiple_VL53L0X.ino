@@ -1,7 +1,10 @@
 #include <Wire.h>
 #include <PCF8574.h>
 #include "VL53L0XMidiControl.h"
+#include <MIDI.h>
 #include <EEPROM.h>
+
+MIDI_CREATE_DEFAULT_INSTANCE();
 
 const int smoothSampleAmountPotPin = A1;
 const int maxDistancePotPin = A0;
@@ -14,7 +17,7 @@ const int maxDistanceMax = 800;
 const int minSmoothSampleAmount = 1;
 const int maxSmoothSampleAmount = 20;
 
-const bool midi = false;
+const bool midiEnabled = false;
 
 const int controlAmount = 4;
 const int controlSetAmount = 3;
@@ -35,10 +38,10 @@ int XSwitchValues[4] = {323, 412, 608, 642};
 VL53L0XMidiControl controls[controlAmount]
 {
     // axisName controlChannel switchPin sensorXShutPin ledPin midi controlChannelAmount controlChannelSetAmount
-    VL53L0XMidiControl("W", 0, A3, WSwitchValues, 11, 3,  midi, controlAmount, controlSetAmount),
-    VL53L0XMidiControl("X", 1, A3, XSwitchValues, A2, 6,  midi, controlAmount, controlSetAmount),
-    VL53L0XMidiControl("Y", 2, 2,                 12, 5,  midi, controlAmount, controlSetAmount),
-    VL53L0XMidiControl("Z", 3, 8,                 9,  10, midi, controlAmount, controlSetAmount)
+    VL53L0XMidiControl("W", 0, A3, WSwitchValues, 11, 3,  midiEnabled, controlAmount, controlSetAmount),
+    VL53L0XMidiControl("X", 1, A3, XSwitchValues, A2, 6,  midiEnabled, controlAmount, controlSetAmount),
+    VL53L0XMidiControl("Y", 2, 2,                 12, 5,  midiEnabled, controlAmount, controlSetAmount),
+    VL53L0XMidiControl("Z", 3, 8,                 9,  10, midiEnabled, controlAmount, controlSetAmount)
 };
 
 int I2CAddresses[controlAmount] {22, 23, 24, 25};
@@ -46,6 +49,8 @@ int I2CAddresses[controlAmount] {22, 23, 24, 25};
 bool assignmentMode = false;
 
 bool previousEnableState[controlAmount];
+
+byte midiChannel = 0;
 
 bool getControlChannelSetSwitchState()
 {
@@ -63,7 +68,7 @@ bool getControlChannelSetSwitchState()
     return controlChannelSetSwitchState;
 }
 
-int midiChannelSelection(int midiChannel)
+int midiChannelSelection()
 {
     int buttonAmount = 0;
 
@@ -164,7 +169,15 @@ int midiChannelSelection(int midiChannel)
 
 void setup()
 {
-    Serial.begin(115200);
+	if(midiEnabled)
+	{
+		MIDI.begin(MIDI_CHANNEL_OMNI);
+	}
+	else
+	{
+		Serial.begin(115200);
+	}
+    
     Wire.begin();
 
     pinMode(smoothSampleAmountPotPin, INPUT);
@@ -194,7 +207,7 @@ void setup()
 
     pinMode(controlChannelSetSwitchPin, INPUT);
 
-    byte midiChannel = EEPROM.read(0);
+    midiChannel = EEPROM.read(0);
 
     if (midiChannel > 15) // Valeur par défaut de l'eeprom : 255
     {
@@ -205,7 +218,7 @@ void setup()
     {
         if (millis() > 3000) // Mode changement de channel
         {
-            midiChannel = midiChannelSelection(midiChannel);
+            midiChannelSelection();
 
             for (int i = 0; i < controlAmount; i++)
             {
@@ -346,7 +359,7 @@ void checkSwitches()
         {
             int eepromAddress = eepromOffset + count * 16 + currentControlChannelSet;
             
-            if(!midi)
+            if(!midiEnabled)
             {
             	Serial.print("EEPROM WRITE ");
             	Serial.print(eepromAddress);
@@ -373,10 +386,16 @@ void loop()
         //Serial.println(controls[count].getDistance());
 
         controls[count].refreshValue(minDistance, maxDistance, smoothSampleAmount);
+
+        if(controls[count].shouldSendMidi())
+		{
+			MIDI.sendControlChange(controls[count].getControlChannel(), controls[count].getControlValue(), midiChannel);
+		}
+
         checkSwitches();
     }
     
-    if(!midi)
+    if(!midiEnabled)
     {
       Serial.println();
       delay(100);

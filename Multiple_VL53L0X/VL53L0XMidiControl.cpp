@@ -2,7 +2,7 @@
 
 VL53L0XMidiControl::VL53L0XMidiControl() {}
 
-VL53L0XMidiControl::VL53L0XMidiControl(String newAxisName, int newControlChannel, int newSwitchPin, int newSensorXShutPin, int newLedPin, bool newMidi, int newControlChannelAmount, int newControlChannelSetAmount) : axisName(newAxisName), controlChannel(newControlChannel), switchPin(newSwitchPin), sensorXShutPin(newSensorXShutPin), ledPin(newLedPin), midi(newMidi), controlChannelAmount(newControlChannelAmount), controlChannelSetAmount(newControlChannelSetAmount)
+VL53L0XMidiControl::VL53L0XMidiControl(String newAxisName, int newControlChannel, int newSwitchPin, int newSensorXShutPin, int newLedPin, bool newMidiEnabled, int newControlChannelAmount, int newControlChannelSetAmount) : axisName(newAxisName), controlChannel(newControlChannel), switchPin(newSwitchPin), sensorXShutPin(newSensorXShutPin), ledPin(newLedPin), midiEnabled(newMidiEnabled), controlChannelAmount(newControlChannelAmount), controlChannelSetAmount(newControlChannelSetAmount)
 {
     pinMode(sensorXShutPin, OUTPUT);
     digitalWrite(sensorXShutPin, LOW);
@@ -11,7 +11,7 @@ VL53L0XMidiControl::VL53L0XMidiControl(String newAxisName, int newControlChannel
     switchType = 0;
 }
 
-VL53L0XMidiControl::VL53L0XMidiControl(String newAxisName, int newControlChannel, int newSwitchPin, int newSwitchValues[4], int newSensorXShutPin, int newLedPin, bool newMidi, int newControlChannelAmount, int newControlChannelSetAmount) : axisName(newAxisName), controlChannel(newControlChannel), switchPin(newSwitchPin), sensorXShutPin(newSensorXShutPin), ledPin(newLedPin), midi(newMidi), controlChannelAmount(newControlChannelAmount), controlChannelSetAmount(newControlChannelSetAmount)
+VL53L0XMidiControl::VL53L0XMidiControl(String newAxisName, int newControlChannel, int newSwitchPin, int newSwitchValues[4], int newSensorXShutPin, int newLedPin, bool newMidiEnabled, int newControlChannelAmount, int newControlChannelSetAmount) : axisName(newAxisName), controlChannel(newControlChannel), switchPin(newSwitchPin), sensorXShutPin(newSensorXShutPin), ledPin(newLedPin), midiEnabled(newMidiEnabled), controlChannelAmount(newControlChannelAmount), controlChannelSetAmount(newControlChannelSetAmount)
 {
     pinMode(sensorXShutPin, OUTPUT);
     digitalWrite(sensorXShutPin, LOW);
@@ -25,8 +25,8 @@ VL53L0XMidiControl::VL53L0XMidiControl(String newAxisName, int newControlChannel
     switchType = 1;
 }
 
-
-VL53L0XMidiControl::VL53L0XMidiControl(String newAxisName, int newControlChannel, int newSwitchPin, int newSensorXShutPin, int newLedPin, bool newMidi, int newControlChannelAmount, int newControlChannelSetAmount, PCF8574& newPcf) : axisName(newAxisName), controlChannel(newControlChannel), switchPin(newSwitchPin), sensorXShutPin(newSensorXShutPin), ledPin(newLedPin), midi(newMidi), controlChannelAmount(newControlChannelAmount), controlChannelSetAmount(newControlChannelSetAmount)
+/*
+VL53L0XMidiControl::VL53L0XMidiControl(String newAxisName, int newControlChannel, int newSwitchPin, int newSensorXShutPin, int newLedPin, bool newMidiEnabled, int newControlChannelAmount, int newControlChannelSetAmount, PCF8574& newPcf) : axisName(newAxisName), controlChannel(newControlChannel), switchPin(newSwitchPin), sensorXShutPin(newSensorXShutPin), ledPin(newLedPin), midiEnabled(newMidiEnabled), controlChannelAmount(newControlChannelAmount), controlChannelSetAmount(newControlChannelSetAmount)
 {
     pinMode(sensorXShutPin, OUTPUT);
     digitalWrite(sensorXShutPin, LOW);
@@ -36,6 +36,7 @@ VL53L0XMidiControl::VL53L0XMidiControl(String newAxisName, int newControlChannel
 
     pcf = &newPcf;
 }
+*/
 
 void VL53L0XMidiControl::initSkipArray()
 {
@@ -80,10 +81,12 @@ void VL53L0XMidiControl::init(int I2CAddress = 0)
     {
         pinMode(switchPin, INPUT);
     }
+    /*
     else if (switchType == 2)
     {
         pcf->pinMode(switchPin, INPUT);
     }
+    */
 
     pinMode(ledPin, OUTPUT);
     digitalWrite(ledPin, HIGH);
@@ -109,10 +112,11 @@ void VL53L0XMidiControl::init(int I2CAddress = 0)
 
 void VL53L0XMidiControl::refreshValue(int minDistance, int maxDistance, int smoothSampleAmount)
 {
+    shouldSendMidiBool = false;
     long value = getDistance();
 
 	/*
-    if (!midi)
+    if (!midiEnabled)
     {
         Serial.print("Valeur brute " + axisName + " : ");
         Serial.print(value);
@@ -150,7 +154,7 @@ void VL53L0XMidiControl::refreshValue(int minDistance, int maxDistance, int smoo
     value = smooth(value, smoothSampleAmount);
 
 	/*
-    if (!midi)
+    if (!midiEnabled)
     {
         Serial.print("\tValeur filtree : ");
         Serial.println(value);
@@ -185,7 +189,7 @@ void VL53L0XMidiControl::refreshValue(int minDistance, int maxDistance, int smoo
         lastControlValue = controlValue;
     }
 
-    if (!midi)
+    if (!midiEnabled)
     {
         Serial.print("Control " + axisName + " : ");
 
@@ -201,9 +205,10 @@ void VL53L0XMidiControl::refreshValue(int minDistance, int maxDistance, int smoo
         }
     }
 
-    if (midi && (!assignmentMode && !skip[currentControlChannelSet] || (assignmentMode && !assignmentSkip)))
+    if (midiEnabled && (!assignmentMode && !skip[currentControlChannelSet] || (assignmentMode && !assignmentSkip)))
     {
-        sendMIDI(controlChange, controlChannel, controlValue);
+        //sendMIDI(controlChange, controlChannel, controlValue);
+        shouldSendMidiBool = true;
     }
 
     if (!assignmentMode)
@@ -251,7 +256,7 @@ void VL53L0XMidiControl::setEnable(bool enableState)
     }
 
 
-    if (!midi)
+    if (!midiEnabled)
     {
         Serial.print("Module ");
         Serial.print(axisName);
@@ -302,10 +307,12 @@ bool VL53L0XMidiControl::getSwitchState()
 
         return true;
     }
+    /*
     else if (switchType == 2)
     {
         return pcf->digitalRead(0);
     }
+    */
 }
 
 bool VL53L0XMidiControl::isEnabled()
@@ -332,7 +339,7 @@ int VL53L0XMidiControl::getSwitchAction()
                 lastSwitchActionMillis = currentMillis;
                 lastSwitchSinglePressMillis = 0;
 
-                if (!midi)
+                if (!midiEnabled)
                 {
                     Serial.print("Appui double sur le module ");
                     Serial.println(axisName);
@@ -348,7 +355,7 @@ int VL53L0XMidiControl::getSwitchAction()
             {
                 switchPressedSinceMillis = 0;
 
-                if (!midi)
+                if (!midiEnabled)
                 {
                     Serial.print("Appui long sur le module ");
                     Serial.println(axisName);
@@ -370,7 +377,7 @@ int VL53L0XMidiControl::getSwitchAction()
             switchPressedSinceMillis = 0;
             lastSwitchSinglePressMillis = currentMillis;
 
-            if (!midi)
+            if (!midiEnabled)
             {
                 Serial.print("Appui simple sur le module ");
                 Serial.println(axisName);
@@ -434,7 +441,7 @@ void VL53L0XMidiControl::toogleAutoReturn()
     if (autoReturn)
     {
         autoReturn = false;
-        if (!midi)
+        if (!midiEnabled)
         {
             Serial.print("AutoReturn module ");
             Serial.print(axisName);
@@ -453,7 +460,7 @@ void VL53L0XMidiControl::toogleAutoReturn()
             autoReturn = true;
             autoReturnValue = lastValidValue;
 
-            if (!midi)
+            if (!midiEnabled)
             {
                 Serial.print("AutoReturn module ");
                 Serial.print(axisName);
@@ -464,9 +471,9 @@ void VL53L0XMidiControl::toogleAutoReturn()
     }
 }
 
-void VL53L0XMidiControl::setMidiChannel(int newMidiChannel)
+void VL53L0XMidiControl::setMidiChannel(int newMidiEnabledChannel)
 {
-    midiChannel = newMidiChannel;
+    midiChannel = newMidiEnabledChannel;
 }
 
 long VL53L0XMidiControl::smooth(long rawValue, int smoothSampleAmount)
@@ -533,4 +540,19 @@ void VL53L0XMidiControl::setAssignmentMode(bool newAssignmentMode)
     {
         refreshLed();
     }
+}
+
+int VL53L0XMidiControl::getControlValue()
+{
+    return controlValue;
+}
+
+int VL53L0XMidiControl::getControlChannel()
+{
+    return controlChannel;
+}
+
+bool VL53L0XMidiControl::shouldSendMidi()
+{
+    return shouldSendMidiBool;
 }
