@@ -25,6 +25,7 @@ class VL53L0XMidiControl {
         void setMidiChannel(int newMidiChannel);
         void forceLedState(bool ledState);
         void setAssignmentMode(bool newAssignmentMode);
+        void setSentValue();
 
         bool getSwitchState();
         bool isEnabled();
@@ -34,6 +35,8 @@ class VL53L0XMidiControl {
         int getDistance();
         int getControlValue();
         int getControlChannel();
+
+        String getAxisName();
 
     private:
         static const int noteON = 144; //144 = 10010000 en binaire, commande "note on"
@@ -58,6 +61,8 @@ class VL53L0XMidiControl {
         int autoReturnValue = 0;
 
         int lastControlValue = -1;
+
+        int lastSentValue = 0;
 
         int startControlChannel = 0;
         int controlChannelAmount = 0;
@@ -93,7 +98,7 @@ class VL53L0XMidiControl {
         long lastLedChangeMillis = 0;
 
         void initSkipArray();
-        void sendMIDI(int command, int note, int velocity);
+        //void sendMIDI(int command, int note, int velocity);
 
         long smooth(long rawValue, int smoothSampleAmount);
 

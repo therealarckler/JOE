@@ -59,6 +59,7 @@ int VL53L0XMidiControl::getDistance()
     return sensor.readRangeContinuousMillimeters();
 }
 
+/*
 void VL53L0XMidiControl::sendMIDI(int command, int note, int velocity)
 {
     Serial.write(command + midiChannel); // Le canal midi est spécifié par les 4 dernier bits
@@ -69,6 +70,7 @@ void VL53L0XMidiControl::sendMIDI(int command, int note, int velocity)
     // Serial1.write(note);
     // Serial1.write(velocity);
 }
+*/
 
 void VL53L0XMidiControl::init(int I2CAddress = 0)
 {
@@ -122,7 +124,7 @@ void VL53L0XMidiControl::refreshValue(int minDistance, int maxDistance, int smoo
         Serial.print(value);
     }
 	*/
-	
+
     /*
     if(abs(value - lastValue) > rejectThreshold && abs(value - lastValidValue) > rejectThreshold)
     {
@@ -131,11 +133,17 @@ void VL53L0XMidiControl::refreshValue(int minDistance, int maxDistance, int smoo
     }
     */
 
+    bool skipSmoothing = false;
+
     if (value == -1 || value > maxDistance + 200)
     {
         if (autoReturn)
         {
             value = autoReturnValue;
+        }
+        else
+        {
+            skipSmoothing = true;
         }
     }
     else if (value == 0)
@@ -151,7 +159,10 @@ void VL53L0XMidiControl::refreshValue(int minDistance, int maxDistance, int smoo
         lastZeroSkipped = false;
     }
 
-    value = smooth(value, smoothSampleAmount);
+    if(!skipSmoothing)
+    {
+        value = smooth(value, smoothSampleAmount);
+    }
 
 	/*
     if (!midiEnabled)
@@ -164,7 +175,12 @@ void VL53L0XMidiControl::refreshValue(int minDistance, int maxDistance, int smoo
 
     if (assignmentMode)
     {
-        controlValue = 63;
+        controlValue = lastSentValue + 1;
+
+        if(controlValue >= 127)
+        {
+            controlValue = 0;
+        }
     }
     else
     {
@@ -205,7 +221,7 @@ void VL53L0XMidiControl::refreshValue(int minDistance, int maxDistance, int smoo
         }
     }
 
-    if (midiEnabled && (!assignmentMode && !skip[currentControlChannelSet] || (assignmentMode && !assignmentSkip)))
+    if (midiEnabled && (value != lastSentValue && (!assignmentMode && !skip[currentControlChannelSet] || (assignmentMode && !assignmentSkip))))
     //if (true && (!assignmentMode && !skip[currentControlChannelSet] || (assignmentMode && !assignmentSkip)))
     {
         //sendMIDI(controlChange, controlChannel, controlValue);
@@ -270,6 +286,11 @@ void VL53L0XMidiControl::setEnable(bool enableState)
 void VL53L0XMidiControl::toogleEnable()
 {
     setEnable(skip[currentControlChannelSet]);
+}
+
+void VL53L0XMidiControl::setSentValue()
+{
+    lastSentValue = lastValue;
 }
 
 bool VL53L0XMidiControl::getSwitchState()
@@ -513,12 +534,12 @@ void VL53L0XMidiControl::refreshLed()
             {
                 currentLedState = true;
                 lastLedChangeMillis = currentMillis;
-                analogWrite(ledPin, map(lastControlValue, 0, 127, 50, 255));
+                analogWrite(ledPin, map(lastControlValue, 0, 127, 25, 255));
             }
         }
         else
         {
-            analogWrite(ledPin, map(lastControlValue, 0, 127, 50, 255));
+            analogWrite(ledPin, map(lastControlValue, 0, 127, 25, 255));
         }
     }
 }
@@ -557,3 +578,9 @@ bool VL53L0XMidiControl::shouldSendMidi()
 {
     return shouldSendMidiBool;
 }
+
+String VL53L0XMidiControl::getAxisName()
+{
+	return axisName;
+}
+
