@@ -16,14 +16,14 @@ const int maxDistanceMax = 800;
 const int minSmoothSampleAmount = 1;
 const int maxSmoothSampleAmount = 20;
 
-const bool midiEnabled = true;
+const bool midiEnabled = false;
 
 const int controlAmount = 4;
 const int controlSetAmount = 3;
 
 const int controlChannelSetSwitchPin = A3;
 const int controlChannelSetSwitchValues[] = {512, 608, 642, 563};
-const int controlChannelSetLedPin[3] {4, 7, 13};
+const int controlChannelSetLedPin[controlSetAmount] {4, 7, 13};
 
 const int eepromOffset = 16;
 
@@ -35,10 +35,10 @@ int XSwitchValues[4] = {323, 412, 608, 642};
 VL53L0XMidiControl controls[controlAmount]
 {
     // axisName controlChannel switchPin sensorXShutPin ledPin midi controlChannelAmount controlChannelSetAmount
-    VL53L0XMidiControl("W", 50, A3, WSwitchValues, 11, 3,  midiEnabled, controlAmount, controlSetAmount),
-    VL53L0XMidiControl("X", 51, A3, XSwitchValues, A2, 6,  midiEnabled, controlAmount, controlSetAmount),
-    VL53L0XMidiControl("Y", 52, 2,                 12, 5,  midiEnabled, controlAmount, controlSetAmount),
-    VL53L0XMidiControl("Z", 53, 8,                 9,  10, midiEnabled, controlAmount, controlSetAmount)
+    VL53L0XMidiControl("W", 0, A3, WSwitchValues, 11, 3,  midiEnabled, controlAmount, controlSetAmount),
+    VL53L0XMidiControl("X", 1, A3, XSwitchValues, A2, 6,  midiEnabled, controlAmount, controlSetAmount),
+    VL53L0XMidiControl("Y", 2, 2,                 12, 5,  midiEnabled, controlAmount, controlSetAmount),
+    VL53L0XMidiControl("Z", 3, 8,                 9,  10, midiEnabled, controlAmount, controlSetAmount)
 };
 
 int I2CAddresses[controlAmount] {22, 23, 24, 25};
@@ -48,6 +48,7 @@ bool assignmentMode = false;
 bool previousEnableState[controlAmount];
 
 int midiChannel = 0;
+int controlChannelCollectionIndex = 0; 
 
 unsigned long lastMidiChannelSetLedBlinkMillis = 0;
 
@@ -67,7 +68,7 @@ bool getControlChannelSetSwitchState()
     return controlChannelSetSwitchState;
 }
 
-int midiChannelSelection()
+void midiSettingInput()
 {
     int buttonAmount = 0;
 
@@ -88,10 +89,10 @@ int midiChannelSelection()
 
     if (buttonAmount == 4)
     {
-        buttonWeights[0] = -10;
-        buttonWeights[1] = -1;
-        buttonWeights[2] = 1;
-        buttonWeights[3] = 10;
+        buttonWeights[0] = -1;
+        buttonWeights[1] = 1;
+        buttonWeights[2] = -1;
+        buttonWeights[3] = 1;
     }
     else if (buttonAmount == 2)
     {
@@ -115,6 +116,7 @@ int midiChannelSelection()
     byte currentLitLed = 0;
     unsigned long lastLedChangeMillis = millis();
 
+	int displayValue = midiChannel;
     while (true)
     {
         if (!getControlChannelSetSwitchState())
@@ -126,29 +128,9 @@ int midiChannelSelection()
                 if (millis() - buttonPushedMillis > 3000) // Sortie du mode changement de channel
                 {
                     EEPROM.write(0, midiChannel);
-                    return midiChannel;
+                    EEPROM.write(1, controlChannelCollectionIndex);
+                    return;
                 }
-            }
-        }
-
-        unsigned long currentMillis = millis();
-
-        if(currentMillis - lastLedChangeMillis > 1000)
-        {
-            lastLedChangeMillis = currentMillis;
-
-            currentLitLed += 1;
-            if(currentLitLed >= controlSetAmount)
-            {
-                currentLitLed = 0;
-            }
-
-            Serial.print(currentLitLed);
-
-            for(int i = 0; i < controlSetAmount; i++)
-            {
-                digitalWrite(controlChannelSetLedPin[i], i == currentLitLed);
-                Serial.print(i == currentLitLed);
             }
         }
 
@@ -162,35 +144,62 @@ int midiChannelSelection()
         }
         */
         
+        /*
         byte moduloValue = midiChannel % controlAmount;
 
         for (int i = 0; i < controlAmount; i++) // On affiche le modulo du canal actuel
         {
             controls[i].forceLedState(i <= moduloValue);
         }
+        */
+
         
+        byte moduloValue = displayValue % controlSetAmount;
+
+        for (int i = 0; i < controlSetAmount; i++) // On affiche le modulo du canal actuel
+        {
+            digitalWrite(controlChannelSetLedPin[i], i == moduloValue);
+        }
+        
+
         for (int i = 0; i < buttonAmount; i++)
         {
             bool currentSwitchState = controls[i].getSwitchState();
 
             if (!currentSwitchState && currentSwitchState != previousSwitchState[i])
             {
-                midiChannel += buttonWeights[i];
-
-                if (buttonAmount == 1)
+                if(i < 2)
                 {
-                    if (midiChannel < 0)
+                    midiChannel += buttonWeights[i];
+
+                    /*
+                    if (buttonAmount == 1)
                     {
-                        midiChannel += 16;
+                        if (midiChannel < 0)
+                        {
+                            midiChannel += 16;
+                        }
+                        else if (midiChannel > 15)
+                        {
+                            midiChannel -= 16;
+                        }
                     }
-                    else if (midiChannel > 15)
+                    else
                     {
-                        midiChannel -= 16;
+                        midiChannel = constrain(midiChannel, 0, 15);
                     }
+                    */
+
+                    midiChannel = constrain(midiChannel, 0, 15);
+
+                    displayValue = midiChannel;
                 }
                 else
                 {
-                    midiChannel = constrain(midiChannel, 0, 15);
+                    controlChannelCollectionIndex += buttonWeights[i];
+                    controlChannelCollectionIndex = constrain(controlChannelCollectionIndex, 0, 127 / (controlSetAmount * controlAmount));
+                    
+                    displayValue = controlChannelCollectionIndex;
                 }
             }
 
@@ -246,11 +255,30 @@ void setup()
         midiChannel = 0;
     }
 
+	controlChannelCollectionIndex = EEPROM.read(1);
+
+    if (controlChannelCollectionIndex > 127 / (controlSetAmount * controlAmount))
+    {
+        controlChannelCollectionIndex = 0;
+    }
+
     while (!getControlChannelSetSwitchState())
     {
         if (millis() > 3000) // Mode changement de channel
         {
-            midiChannelSelection();
+            bool ledState = false;
+            for(int i = 0; i < 6; i++)
+            {
+                ledState = !ledState;
+                for(int j = 0; j < controlSetAmount; j++)
+                {
+                    digitalWrite(controlChannelSetLedPin[j], ledState);
+                }
+
+                delay(200);
+            }
+
+            midiSettingInput();
 
             for (int i = 0; i < controlAmount; i++)
             {
@@ -282,6 +310,9 @@ void setup()
     for (int i = 0; i < controlAmount; i++)
     {
         controls[i].setMidiChannel(midiChannel);
+
+        controls[i].setStartControlChannel(controlChannelCollectionIndex * controlSetAmount * controlAmount + i);
+        Serial.println(controlChannelCollectionIndex * controlSetAmount * controlAmount + i);
     }
 
     for (int count = 0; count < controlSetAmount; count++)
@@ -336,7 +367,7 @@ void refreshControlChannelSetLeds()
     {
         unsigned long currentMillis = millis();
 
-        if(currentMillis - lastMidiChannelSetLedBlinkMillis > 1000)
+        if(currentMillis - lastMidiChannelSetLedBlinkMillis > 500)
         {
             lastMidiChannelSetLedBlinkMillis = currentMillis;
             for (int count = 0; count < controlSetAmount; count++)
@@ -347,6 +378,20 @@ void refreshControlChannelSetLeds()
                 }
             }
         }
+    }
+    else
+    {
+    	for (int count = 0; count < controlSetAmount; count++)
+	    {
+	        if (count == currentControlChannelSet)
+	        {
+	            digitalWrite(controlChannelSetLedPin[count], HIGH);
+	        }
+	        else
+	        {
+	            digitalWrite(controlChannelSetLedPin[count], LOW);
+	        }
+	    }
     }
 }
 
@@ -369,6 +414,20 @@ void checkSwitches()
                         controls[i].setAssignmentMode(assignmentMode);
                     }
 
+                    bool ledState = false;
+                    for(int i = 0; i < 6; i++)
+                    {
+                        ledState = !ledState;
+                        for(int j = 0; j < controlSetAmount; j++)
+                        {
+                            digitalWrite(controlChannelSetLedPin[j], ledState);
+                        }
+
+                        delay(200);
+                    }
+
+					refreshControlChannelSetLeds();
+					
                     while (!controls[0].getSwitchState() || !controls[controlAmount - 1].getSwitchState() || !getControlChannelSetSwitchState()) {}; // On attend que les boutons soient relachés
                     return;
                 }
@@ -386,7 +445,19 @@ void checkSwitches()
     {
         int switchAction = controls[count].getSwitchAction();
 
-        if (switchAction == 2 || assignmentMode && switchAction != 0)
+		if(assignmentMode && switchAction != 0)
+		{
+			if(controls[count].isEnabled())
+			{
+				controls[count].setEnable(false);
+			}
+			else
+			{
+				switchAction = 2;
+			}
+		}
+        
+        if (switchAction == 2)
         {
             for (int a = 0; a < controlAmount; a++)
             {
@@ -409,26 +480,28 @@ void checkSwitches()
             controls[count].toogleAutoReturn();
         }
     }
-
-    for (int count = 0; count < controlAmount; count++)
-    {
-        if (previousEnableState[count] != controls[count].isEnabled())
-        {
-            int eepromAddress = eepromOffset + count * 16 + currentControlChannelSet;
-            
-            if(!midiEnabled)
-            {
-            	Serial.print("EEPROM WRITE ");
-            	Serial.print(eepromAddress);
-            	Serial.print(" ");
-            	Serial.println(controls[count].isEnabled());
-            }
-
-            EEPROM.write(eepromAddress, controls[count].isEnabled());
-        }
-
-        previousEnableState[count] = controls[count].isEnabled();
-    }
+	if(!assignmentMode)
+	{
+		for (int count = 0; count < controlAmount; count++)
+	    {
+	        if (previousEnableState[count] != controls[count].isEnabled())
+	        {
+	            int eepromAddress = eepromOffset + count * 16 + currentControlChannelSet;
+	            
+	            if(!midiEnabled)
+	            {
+	            	Serial.print("EEPROM WRITE ");
+	            	Serial.print(eepromAddress);
+	            	Serial.print(" ");
+	            	Serial.println(controls[count].isEnabled());
+	            }
+	
+	            EEPROM.write(eepromAddress, controls[count].isEnabled());
+	        }
+	
+	        previousEnableState[count] = controls[count].isEnabled();
+	    }
+	}
 }
 
 void loop()
@@ -445,12 +518,16 @@ void loop()
         //Serial.println(controls[count].getDistance());
         controls[count].refreshValue(minDistance, maxDistance, smoothSampleAmount);
 
-        if(controls[count].shouldSendMidi())
+        if(controls[count].shouldSendValue())
 		{
-			MIDI.sendControlChange(controls[count].getControlChannel(), controls[count].getControlValue(), midiChannel + 1); // La fonction attend un canal entre 1 et 16
+			if(midiEnabled)
+			{
+				MIDI.sendControlChange(controls[count].getControlChannel(), controls[count].getControlValue(), midiChannel + 1); // La fonction attend un canal entre 1 et 16	
+			}
+			
             controls[count].setSentValue();
 		}
-
+		
         checkSwitches();
     }
     

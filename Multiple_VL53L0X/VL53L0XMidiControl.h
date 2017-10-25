@@ -26,10 +26,11 @@ class VL53L0XMidiControl {
         void forceLedState(bool ledState);
         void setAssignmentMode(bool newAssignmentMode);
         void setSentValue();
+        void setStartControlChannel(int newStartControlChannel);
 
         bool getSwitchState();
         bool isEnabled();
-        bool shouldSendMidi();
+        bool shouldSendValue();
 
         int getSwitchAction();
         int getDistance();
@@ -88,7 +89,7 @@ class VL53L0XMidiControl {
 
         bool lastZeroSkipped = false;
 
-        bool shouldSendMidiBool = false;
+        bool shouldSendValueBool = false;
 
         bool* skip = false;
 

@@ -114,7 +114,7 @@ void VL53L0XMidiControl::init(int I2CAddress = 0)
 
 void VL53L0XMidiControl::refreshValue(int minDistance, int maxDistance, int smoothSampleAmount)
 {
-    shouldSendMidiBool = false;
+    shouldSendValueBool = false;
     long value = getDistance();
 
 	/*
@@ -175,12 +175,15 @@ void VL53L0XMidiControl::refreshValue(int minDistance, int maxDistance, int smoo
 
     if (assignmentMode)
     {
-        controlValue = lastSentValue + 1;
-
-        if(controlValue >= 127)
-        {
-            controlValue = 0;
-        }
+    	if(!assignmentSkip)
+    	{
+	        controlValue = lastSentValue + 1;
+	
+	        if(controlValue >= 127)
+	        {
+	            controlValue = 0;
+	        }
+    	}
     }
     else
     {
@@ -202,14 +205,15 @@ void VL53L0XMidiControl::refreshValue(int minDistance, int maxDistance, int smoo
         }
 
         lastValidValue = value;
-        lastControlValue = controlValue;
     }
+
+    lastControlValue = controlValue;
 
     if (!midiEnabled)
     {
         Serial.print("Control " + axisName + " : ");
 
-        if (skip[currentControlChannelSet] || assignmentMode && assignmentSkip)
+        if (!assignmentMode && skip[currentControlChannelSet] || assignmentMode && assignmentSkip)
         {
             Serial.println("SKIPPED");
         }
@@ -221,13 +225,13 @@ void VL53L0XMidiControl::refreshValue(int minDistance, int maxDistance, int smoo
         }
     }
 
-    if (midiEnabled && (value != lastSentValue && (!assignmentMode && !skip[currentControlChannelSet] || (assignmentMode && !assignmentSkip))))
+    if (controlValue != lastSentValue && (!assignmentMode && !skip[currentControlChannelSet] || (assignmentMode && !assignmentSkip)))
     //if (true && (!assignmentMode && !skip[currentControlChannelSet] || (assignmentMode && !assignmentSkip)))
     {
         //sendMIDI(controlChange, controlChannel, controlValue);
-        shouldSendMidiBool = true;
+        shouldSendValueBool = true;
     }
-
+    
     if (!assignmentMode)
     {
         refreshLed();
@@ -290,7 +294,12 @@ void VL53L0XMidiControl::toogleEnable()
 
 void VL53L0XMidiControl::setSentValue()
 {
-    lastSentValue = lastValue;
+    lastSentValue = lastControlValue;
+}
+
+void VL53L0XMidiControl::setStartControlChannel(int newStartControlChannel)
+{
+    startControlChannel = newStartControlChannel;
 }
 
 bool VL53L0XMidiControl::getSwitchState()
@@ -339,7 +348,14 @@ bool VL53L0XMidiControl::getSwitchState()
 
 bool VL53L0XMidiControl::isEnabled()
 {
-    return !skip[currentControlChannelSet];
+	if(assignmentMode)
+	{
+		return !assignmentSkip;
+	}
+	else
+	{
+		return !skip[currentControlChannelSet];
+	}
 }
 
 int VL53L0XMidiControl::getSwitchAction()
@@ -574,9 +590,9 @@ int VL53L0XMidiControl::getControlChannel()
     return controlChannel;
 }
 
-bool VL53L0XMidiControl::shouldSendMidi()
+bool VL53L0XMidiControl::shouldSendValue()
 {
-    return shouldSendMidiBool;
+    return shouldSendValueBool;
 }
 
 String VL53L0XMidiControl::getAxisName()
